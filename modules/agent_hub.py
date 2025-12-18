@@ -11,6 +11,10 @@ import streamlit as st
 from core.llm_client import LLMClient
 from utils.logger import get_logger
 
+from core.llm_client import LLMClient
+from utils.logger import get_logger
+from langchain_core.messages import HumanMessage, AIMessage
+
 logger = get_logger(__name__)
 
 
@@ -69,21 +73,70 @@ def _render_research_workflow() -> None:
                     st.warning("Could not generate graph image.")
 
         with col_status:
+            # Session State for Thread
+            if "research_thread_id" not in st.session_state:
+                st.session_state.research_thread_id = "thread_1" # Simple fixed thread for demo
+            
+            thread_config = {"configurable": {"thread_id": st.session_state.research_thread_id}}
+            
             st.info(f"🔄 **Team Active**: Researcing '{topic}'...")
             status_container = st.empty()
-            status_container.text("Analyzing request...")
             
-            # Execute
-            try:
-                # We can stream events later, for now just run
-                inputs = {"messages": [("user", f"Research this topic: {topic}")]}
-                result = graph.invoke(inputs)
-                
-                final_msg = result["messages"][-1]
-                status_container.success("✅ Work Complete!")
-                
-                st.markdown("### 📄 Final Report")
-                st.markdown(final_msg.content)
-                
-            except Exception as e:
-                status_container.error(f"Workflow failed: {str(e)}")
+            # 1. Start execution or Resume
+            if st.button("▶️ Run / Resume Workflow"):
+                status_container.text("Agents working...")
+                try:
+                    # Initial Run
+                    current_state = graph.get_state(thread_config)
+                    
+                    if not current_state.values:
+                         # Start fresh
+                         graph.invoke(
+                             {"messages": [("user", f"Research this topic: {topic}")]}, 
+                             thread_config
+                         )
+                    else:
+                        # Resume (if we were paused)
+                        # We just call invoke with None to resume from interrupt
+                        graph.invoke(None, thread_config)
+                        
+                except Exception as e:
+                    # st.error(f"Execution Error: {e}")
+                    pass
+            
+            # 2. Check State
+            state_snapshot = graph.get_state(thread_config)
+            
+            if state_snapshot.next:
+                # If next node is 'manager', we are PAUSED
+                if "manager" in state_snapshot.next:
+                    st.warning("⚠️ **Manager Review Required**")
+                    
+                    # Show latest findings
+                    last_msg = state_snapshot.values["messages"][-1]
+                    st.markdown("### 🔎 Researcher Findings")
+                    st.markdown(last_msg.content)
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("✅ Approve"):
+                            graph.update_state(thread_config, {"messages": [HumanMessage(content="APPROVE")]}, as_node="manager")
+                            st.rerun() # Rerun to hit 'Resume' logic naturally or auto-trigger? 
+                                       # Better to let user click Resume or auto-resume. 
+                                       # For simplicity, we just update state, user clicks Run/Resume.
+                            st.success("Approved! Click 'Run/Resume' to proceed.")
+
+                    with c2:
+                        feedback = st.text_input("Feedback for Rejection")
+                        if st.button("↩️ Reject"):
+                             graph.update_state(thread_config, {"messages": [HumanMessage(content=f"REJECT: {feedback}")]}, as_node="manager")
+                             st.error("Rejected sent. Click 'Run/Resume' to retry.")
+
+            # 3. Completion Check
+            # If no next, we are done
+            if not state_snapshot.next and state_snapshot.values:
+                 final_msg = state_snapshot.values["messages"][-1]
+                 status_container.success("✅ Work Complete!")
+                 st.markdown("### 📄 Final Report")
+                 st.markdown(final_msg.content)
+

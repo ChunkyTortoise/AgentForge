@@ -20,6 +20,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
+from langgraph.checkpoint.memory import MemorySaver
 
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_core.tools import tool
@@ -117,6 +118,17 @@ def create_research_graph(provider: str = "gemini"):
         response = researcher_llm.invoke(messages)
         return {"messages": [response]}
 
+    # 1.5 Manager Node (Human-in-the-Loop)
+    def manager_node(state: AgentState):
+        """
+        Manager review node. 
+        This is a placeholder that does nothing but pause the graph 
+        if we use 'interrupt_before'. 
+        Or we can check for state updates injected by the human.
+        """
+        # In a real HITL system, we might look for a specific 'feedback' message
+        pass
+
     # 2. Writer Node
     writer_llm = BaseAgent(provider).llm
     
@@ -140,21 +152,54 @@ def create_research_graph(provider: str = "gemini"):
     workflow = StateGraph(AgentState)
 
     workflow.add_node("researcher", researcher_node)
+    workflow.add_node("manager", manager_node)
     workflow.add_node("tools", tool_node)
     workflow.add_node("writer", writer_node)
 
     workflow.set_entry_point("researcher")
 
-    # Conditional logic for Researcher -> Tools or Writer
-    def should_continue(state: AgentState):
+    # Conditional logic for Researcher -> Tools or Manager
+    def researcher_router(state: AgentState):
         last_message = state["messages"][-1]
         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
             return "tools"
-        # If researcher is done (no tools), hand off to Writer
-        return "writer"
+        return "manager"
 
-    workflow.add_conditional_edges("researcher", should_continue)
+    workflow.add_conditional_edges("researcher", researcher_router)
     workflow.add_edge("tools", "researcher") # Loop back to researcher
-    workflow.add_edge("writer", END)
+    
+    # Manager Router
+    def manager_router(state: AgentState):
+        # This logic depends on Human interaction.
+        # If the last message is from 'human' and says "APPROVE", go to writer.
+        # If "REJECT", go back to researcher.
+        
+        messages = state["messages"]
+        last_message = messages[-1]
+        
+        # Simple heuristic: If the LAST message is Human (feedback), we check content
+        if isinstance(last_message, HumanMessage):
+             if "APPROVE" in last_message.content.upper():
+                 return "writer"
+             else:
+                 return "researcher"
+        
+        # Default: If we just arrived here from Researcher, we pause. 
+        # But we need to return something to keep graph valid?
+        # Actually, if we use interrupt_before=["manager"], execution stops BEFORE running manager.
+        # When we resume, we are IN manager. 
+        
+        return "writer" # Default fallback if no feedback mechanism logic yet
 
-    return workflow.compile()
+    workflow.add_conditional_edges(
+        "manager",
+        manager_router,
+        {"writer": "writer", "researcher": "researcher"}
+    )
+    
+    workflow.add_edge("writer", END)
+    
+    # Add Persistence
+    memory = MemorySaver()
+
+    return workflow.compile(checkpointer=memory, interrupt_before=["manager"])

@@ -30,7 +30,7 @@ def render() -> None:
         st.session_state.vision_current_image = None
     
     # Tabs
-    tab_chat, tab_video, tab_extract = st.tabs(["💬 Chat with Image", "📹 Video Intelligence", "🧾 Data Extraction"])
+    tab_chat, tab_video, tab_voice, tab_extract = st.tabs(["💬 Chat with Image", "📹 Video Intelligence", "🎙️ Voice Mode", "🧾 Data Extraction"])
     
     # --- TAB 1: CHAT WITH IMAGE ---
     with tab_chat:
@@ -132,6 +132,37 @@ def render() -> None:
                     except Exception as e:
                         st.error(f"Video Error: {e}")
 
+    # --- TAB 3: VOICE MODE ---
+    with tab_voice:
+        st.markdown("### 🎙️ Voice Mode (Multimodal Audio)")
+        st.info("Speak naturally to Gemini. Audio is processed natively.")
+        
+        # Audio Input Widget (Streamlit 1.40+)
+        try:
+            audio_value = st.audio_input("Record your voice command")
+        except AttributeError:
+             st.error("This feature requires Streamlit >= 1.40.0. Please upgrade.")
+             audio_value = None
+
+        if audio_value:
+             st.audio(audio_value)
+             
+             if st.button("Process Audio"):
+                 with st.spinner("Listening & Thinking..."):
+                     try:
+                         # 1. Convert to bytes
+                         audio_bytes = audio_value.getvalue()
+                         
+                         # 2. Call Gemini with Audio
+                         response_text = _run_audio_chat(audio_bytes)
+                         
+                         # 3. Output
+                         st.markdown("### 🤖 Agent Response:")
+                         st.markdown(response_text)
+                         
+                     except Exception as e:
+                         st.error(f"Voice Error: {e}")
+
     # --- TAB 3: EXTRACTION ---
     with tab_extract:
         st.markdown("### 🧾 Structured Data Extraction")
@@ -213,3 +244,45 @@ def _run_vision_chat(provider, prompt, b64, mime, history):
         return res.content
         
     return "Error: Provider unavailable."
+
+
+def _run_audio_chat(audio_bytes):
+    """Run Gemini with Native Audio Support."""
+    import google.generativeai as genai
+    import tempfile
+    import os
+    import time
+    
+    api_key = os.getenv("GOOGLE_API_KEY")
+    genai.configure(api_key=api_key)
+    
+    # Save temp file for upload (GenAI SDK usually requires file path or specific blob)
+    # Uploading as file is safest for multimedia
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        tmp.write(audio_bytes)
+        tmp_path = tmp.name
+        
+    try:
+        # Upload
+        audio_file = genai.upload_file(tmp_path)
+        
+        # Wait for processing
+        while audio_file.state.name == "PROCESSING":
+            time.sleep(1)
+            audio_file = genai.get_file(audio_file.name)
+            
+        if audio_file.state.name == "FAILED":
+             return "Error: Audio processing failed."
+             
+        # Generate
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        result = model.generate_content(
+            [audio_file, "Listen to this audio and respond helpfully to the user's request."]
+        )
+        return result.text
+        
+    finally:
+        # Cleanup temp file
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
