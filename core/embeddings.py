@@ -9,11 +9,9 @@ import os
 from enum import Enum
 from typing import List, Optional
 
-from dotenv import load_dotenv
-
+from core.config import settings
 from utils.logger import get_logger
 
-load_dotenv()
 logger = get_logger(__name__)
 
 
@@ -48,9 +46,9 @@ class EmbeddingModel:
         try:
             if self.provider == EmbeddingProvider.GOOGLE:
                 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-                api_key = os.getenv("GOOGLE_API_KEY")
+                api_key = settings.google_api_key
                 if not api_key:
-                    raise ValueError("GOOGLE_API_KEY not found. Please set it in .env")
+                    raise ValueError("GOOGLE_API_KEY not found in settings")
                 
                 model = self.model_name or "models/embedding-001"
                 self._client = GoogleGenerativeAIEmbeddings(

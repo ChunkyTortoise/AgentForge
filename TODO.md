@@ -19,4 +19,9 @@
 ## 🐝 Phase 4: Autonomous Features
 - [x] **Parallel Swarm**: Implement Planner/Analyst/Aggregator pattern.
 - [x] **Code Analyst Agent**: Implement repo-level analysis in Agent Hub.
-- [ ] **Agentic TODO Solver**: (Planned) An agent that can suggest code changes based on this file.
+- [x] **Agentic TODO Solver**: An agent that can suggest code changes based on this file.
+
+## 🛡️ Phase 5: Enterprise Hardening
+- [x] **Streaming UI**: Implement real-time token streaming from API to Frontend.
+- [ ] **Distributed Task Queue**: Move long-running swarms to Celery/Redis.
+- [ ] **E2E Testing**: Implement Playwright/Pytest-based integration tests.

@@ -1,37 +1,53 @@
-"""Logging utility for AgentForge."""
+"""Logging utility for AgentForge with Correlation ID support."""
 import logging
-import os
+import sys
 from typing import Optional
+from contextvars import ContextVar
+import uuid
 
+from core.config import settings
+
+# Context variable to store correlation ID for the current task/request
+correlation_id: ContextVar[str] = ContextVar("correlation_id", default="system")
+
+class CorrelationFilter(logging.Filter):
+    """Logging filter that injects the current correlation_id into the log record."""
+    def filter(self, record):
+        record.correlation_id = correlation_id.get()
+        return True
 
 def get_logger(name: str, level: Optional[str] = None) -> logging.Logger:
     """
-    Get a configured logger instance.
-
-    Args:
-        name: Logger name (typically __name__)
-        level: Optional log level override
-
-    Returns:
-        Configured logger instance
+    Get a configured logger instance with structured formatting and correlation tracking.
     """
     logger = logging.getLogger(name)
 
     if not logger.handlers:
-        # Set level from env or default
-        log_level = level or os.getenv("LOG_LEVEL", "INFO")
+        # Set level from settings
+        log_level = level or settings.log_level
         logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
         # Console handler
-        handler = logging.StreamHandler()
+        handler = logging.StreamHandler(sys.stdout)
         handler.setLevel(logger.level)
 
-        # Format
+        # Structured Format including Correlation ID
         formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            "%(asctime)s | %(levelname)-8s | [%(correlation_id)s] | %(name)s | %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S"
         )
         handler.setFormatter(formatter)
+        
+        # Add Filter
+        handler.addFilter(CorrelationFilter())
+        
         logger.addHandler(handler)
+        logger.propagate = False
 
     return logger
+
+def set_correlation_id(cid: Optional[str] = None) -> str:
+    """Set the correlation ID for the current context."""
+    cid = cid or str(uuid.uuid4())
+    correlation_id.set(cid)
+    return cid

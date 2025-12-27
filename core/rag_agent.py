@@ -1,26 +1,14 @@
-"""
-Agentic RAG Module - Self-Corrective Retrieval Augmented Generation.
-
-Logic:
-1. Retrieve documents using VectorStore.
-2. Grade relevance of documents using LLM.
-3. If irrelevant -> Rewrite Query and loop.
-4. If relevant -> Generate Answer.
-"""
 from typing import TypedDict, List
-import os
 
-from langchain_core.messages import BaseMessage, HumanMessage
-from langchain_core.pydantic_v1 import BaseModel, Field
-from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+    from langchain_core.messages import HumanMessage
+    from langchain_core.pydantic_v1 import BaseModel, Field
+    from langchain_core.prompts import PromptTemplate
+    from langchain_core.output_parsers import StrOutputParser
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_anthropic import ChatAnthropic
+    from langgraph.graph import StateGraph, END
 
-from langgraph.graph import StateGraph, END
-
-from utils.logger import get_logger
+    from core.llm_client import LLMClient
+    from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -41,7 +29,7 @@ class GradeDocuments(BaseModel):
 
 # --- NODE FUNCTIONS ---
 
-def create_rag_graph(db_retriever, provider="gemini"):
+def create_rag_graph(db_retriever, provider=None):
     """
     Factory to create the RAG Graph.
     Args:
@@ -49,28 +37,26 @@ def create_rag_graph(db_retriever, provider="gemini"):
         provider: 'gemini' or 'claude'
     """
     
-    # 1. Setup LLM
-    if provider == "gemini":
-        llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0, google_api_key=os.getenv("GOOGLE_API_KEY"))
-    else:
-        llm = ChatAnthropic(model="claude-3-5-sonnet-20241022", temperature=0, anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"))
+    # 1. Setup LLM via Unified Client
+    client = LLMClient(provider=provider)
+    llm = client.get_langchain_model(temperature=0)
 
     # 2. Nodes
     
     def retrieve(state: RAGState):
         """Node: Retrieve documents."""
-        print(f"---RETRIEVE--- Query: {state['question']}")
+        logger.info(f"---RETRIEVE--- Query: {state['question']}")
         documents = db_retriever(state['question']) # Assumes returns list of strings
         # Format if necessary (VectorStore returns objects)
         if documents and not isinstance(documents[0], str): 
              # Simplify object to string
-             documents = [f"{d.text or ''} (Source: {d.source})" for d in documents]
+             documents = [f"{getattr(d, 'page_content', str(d))} (Source: {getattr(d, 'metadata', {}).get('source', 'unknown')})" for d in documents]
              
         return {"documents": documents, "question": state['question']}
 
     def grade_documents(state: RAGState):
         """Node: Grade relevance."""
-        print("---CHECK RELEVANCE---")
+        logger.info("---CHECK RELEVANCE---")
         question = state['question']
         documents = state['documents']
         
@@ -91,18 +77,23 @@ def create_rag_graph(db_retriever, provider="gemini"):
         # Grade inputs
         filtered_docs = []
         for d in documents:
-            score = chain.invoke({"question": question, "context": d})
-            if score.binary_score == "yes":
-                print("---GRADE: DOCUMENT RELEVANT---")
+            try:
+                score = chain.invoke({"question": question, "context": d})
+                if score.binary_score == "yes":
+                    logger.info("---GRADE: DOCUMENT RELEVANT---")
+                    filtered_docs.append(d)
+                else:
+                    logger.info("---GRADE: DOCUMENT NOT RELEVANT---")
+            except Exception as e:
+                logger.error(f"Error grading document: {e}")
+                # Fallback to keep doc if grading fails
                 filtered_docs.append(d)
-            else:
-                print("---GRADE: DOCUMENT NOT RELEVANT---")
                 
         return {"documents": filtered_docs, "question": question}
 
     def transform_query(state: RAGState):
         """Node: Rewrite query."""
-        print("---TRANSFORM QUERY---")
+        logger.info("---TRANSFORM QUERY---")
         question = state['question']
         
         # Rewriter
@@ -120,7 +111,7 @@ def create_rag_graph(db_retriever, provider="gemini"):
 
     def generate(state: RAGState):
         """Node: Generate answer."""
-        print("---GENERATE---")
+        logger.info("---GENERATE---")
         question = state['question']
         documents = state['documents']
         
@@ -146,9 +137,7 @@ def create_rag_graph(db_retriever, provider="gemini"):
         retry_count = state.get("retry_count", 0)
         
         if not filtered_documents:
-            # All docs filtered out
             if retry_count > 1:
-                # Give up to avoid infinite loop -> Go to Final Answer anyway (or failure state)
                 return "generate" 
             return "transform_query"
         else:

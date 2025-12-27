@@ -29,6 +29,7 @@ load_dotenv()
 
 # Module registry
 MODULES = {
+    "💬 Streaming Chat": ("streaming_chat", "Real-time AI Chat"),
     "🔍 RAG Assistant": ("rag_assistant", "RAG Document Assistant"),
     "🤖 Agent Hub": ("agent_hub", "Multi-Agent Research Hub"),
     "🧪 Evaluation Lab": ("evaluation_lab", "System Performance Lab"),
