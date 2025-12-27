@@ -1,33 +1,37 @@
-"""
-AgentForge - Main Application Entry Point.
-
-An AI-powered platform demonstrating RAG, multi-agent systems,
-and AI-enhanced data analytics.
-"""
 import streamlit as st
-
+from dotenv import load_dotenv
+import os
 from utils.logger import get_logger
 
-# Initialize logger
+# Page Config (MUST BE FIRST)
+st.set_page_config(
+    page_title="AgentForge",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Initialize Logger
 logger = get_logger(__name__)
 
-# Page configuration
-st.set_page_config(
-    page_title="AgentForge | AI Intelligence Platform",
-    page_icon="🔮",
-    layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'Get Help': 'https://github.com/ChunkyTortoise/agentforge',
-        'Report a bug': 'https://github.com/ChunkyTortoise/agentforge/issues',
-        'About': '# AgentForge\nAI-Powered Intelligence Platform'
-    }
-)
+# Load CSS
+def load_css(file_name):
+    with open(file_name) as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+try:
+    load_css("assets/css/style.css")
+except FileNotFoundError:
+    pass
+
+# Load Environment Variables
+load_dotenv()
 
 # Module registry
 MODULES = {
     "🔍 RAG Assistant": ("rag_assistant", "RAG Document Assistant"),
     "🤖 Agent Hub": ("agent_hub", "Multi-Agent Research Hub"),
+    "🧪 Evaluation Lab": ("evaluation_lab", "System Performance Lab"),
     "📊 Smart Analyst": ("smart_analyst", "AI-Enhanced Data Analytics"),
     "👁️ Vision Forge": ("vision_forge", "Multimodal Intelligence"),
     "⚡ Prompt Lab": ("prompt_lab", "Prompt Engineering Tools"),
@@ -41,6 +45,17 @@ def main() -> None:
         # Sidebar navigation
         st.sidebar.title("🔮 AgentForge")
         st.sidebar.markdown("**AI Intelligence Platform**")
+        
+        # API Health Check
+        import requests
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+        try:
+            api_status = requests.get(f"{backend_url}/", timeout=1).status_code
+            if api_status == 200:
+                st.sidebar.success("● API Online")
+        except:
+            st.sidebar.error("○ API Offline (Local Fallback)")
+            
         st.sidebar.markdown("---")
 
         # Navigation

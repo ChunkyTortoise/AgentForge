@@ -13,7 +13,7 @@ from typing import Annotated, Sequence, TypedDict
 
 from dotenv import load_dotenv
 
-from langchain_core.messages import BaseMessage, HumanMessage, FunctionMessage
+from langchain_core.messages import BaseMessage, HumanMessage, FunctionMessage, AIMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -203,3 +203,88 @@ def create_research_graph(provider: str = "gemini"):
     memory = MemorySaver()
 
     return workflow.compile(checkpointer=memory, interrupt_before=["manager"])
+
+
+# --- SWARM IMPLEMENTATION ---
+
+class SwarmState(TypedDict):
+    """State for the parallel swarm."""
+    topic: str
+    messages: Annotated[Sequence[BaseMessage], operator.add]
+    analyst_outputs: Annotated[list[str], operator.add]
+    final_report: str
+
+
+def create_swarm_graph(provider: str = "gemini"):
+    """
+    Creates a Parallel Swarm Graph:
+    Planner -> [Market, Tech, Risk] (Parallel) -> Aggregator
+    """
+    llm = BaseAgent(provider).llm
+
+    # 1. Planner Node
+    def planner_node(state: SwarmState):
+        """Just initializes the workflow."""
+        return {"messages": [AIMessage(content=f"Initiating swarm analysis for: {state['topic']}")]}
+
+    # 2. Parallel Analysts
+    def market_analyst_node(state: SwarmState):
+        prompt = f"You are a Market Analyst. Analyze the market potential, trends, and target audience for: '{state['topic']}'. Be concise (3 bullets)."
+        response = llm.invoke([HumanMessage(content=prompt)])
+        return {"analyst_outputs": [f"### 📊 Market Analysis\n{response.content}"]}
+
+    def tech_analyst_node(state: SwarmState):
+        prompt = f"You are a Technology Expert. Analyze the technical feasibility, stack, and innovation for: '{state['topic']}'. Be concise (3 bullets)."
+        response = llm.invoke([HumanMessage(content=prompt)])
+        return {"analyst_outputs": [f"### 💻 Technical Analysis\n{response.content}"]}
+
+    def risk_analyst_node(state: SwarmState):
+        prompt = f"You are a Risk Officer. Analyze potential legal, ethical, and operational risks for: '{state['topic']}'. Be concise (3 bullets)."
+        response = llm.invoke([HumanMessage(content=prompt)])
+        return {"analyst_outputs": [f"### 🛡️ Risk Assessment\n{response.content}"]}
+
+    # 3. Aggregator
+    def aggregator_node(state: SwarmState):
+        """Synthesize all parallel outputs."""
+        outputs = "\n\n".join(state["analyst_outputs"])
+        prompt = f"""
+        You are a Lead Strategist. Synthesize the following swarm reports into a cohesive executive summary about '{state['topic']}'.
+        
+        SWARM REPORTS:
+        {outputs}
+        
+        Final Report format:
+        # Executive Strategy: {state['topic']}
+        ## Executive Summary
+        [Synthesized content]
+        ## Key Insights
+        [Bullets]
+        """
+        response = llm.invoke([HumanMessage(content=prompt)])
+        return {"final_report": response.content}
+
+    # 4. Graph Construction
+    workflow = StateGraph(SwarmState)
+
+    workflow.add_node("planner", planner_node)
+    workflow.add_node("market_analyst", market_analyst_node)
+    workflow.add_node("tech_analyst", tech_analyst_node)
+    workflow.add_node("risk_analyst", risk_analyst_node)
+    workflow.add_node("aggregator", aggregator_node)
+
+    workflow.set_entry_point("planner")
+
+    # Fan-out: Planner -> All Analysts
+    workflow.add_edge("planner", "market_analyst")
+    workflow.add_edge("planner", "tech_analyst")
+    workflow.add_edge("planner", "risk_analyst")
+
+    # Fan-in: All Analysts -> Aggregator
+    workflow.add_edge("market_analyst", "aggregator")
+    workflow.add_edge("tech_analyst", "aggregator")
+    workflow.add_edge("risk_analyst", "aggregator")
+
+    workflow.add_edge("aggregator", END)
+
+    memory = MemorySaver()
+    return workflow.compile(checkpointer=memory)

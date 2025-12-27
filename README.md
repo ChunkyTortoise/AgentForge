@@ -1,138 +1,108 @@
 # AgentForge
 
-> **AI-Powered Intelligence Platform** - RAG, Multi-Agent Systems, and Data Analytics
+> **Enterprise AI Platform** - Strategic Swarms, Production RAG, and Evaluation Pipelines.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Docker](https://img.shields.io/badge/docker-available-blue.svg)](https://www.docker.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688.svg)](https://fastapi.tiangolo.com/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28.0-FF4B4B.svg)](https://streamlit.io)
-[![LangChain](https://img.shields.io/badge/LangChain-0.1+-green.svg)](https://langchain.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![LangGraph](https://img.shields.io/badge/LangGraph-Agentic-orange.svg)](https://langchain-ai.github.io/langgraph/)
 
 ---
 
-## What is AgentForge?
+## 🚀 Overview
 
-AgentForge is an AI-powered platform demonstrating production-grade implementations of:
+**AgentForge** is a production-grade AI platform designed to demonstrate **Senior AI Engineer** capabilities. It moves beyond simple scripts to offer a robust, containerized architecture featuring decoupled microservices, autonomous agent swarms, and rigorous evaluation pipelines.
 
-- **🔍 RAG (Retrieval-Augmented Generation)** - Document Q&A with citations
-- **🤖 Multi-Agent Systems** - Autonomous AI agents working together
-- **📊 AI-Enhanced Data Analytics** - Natural language data exploration
-- **⚡ Prompt Engineering** - Optimized prompt templates and testing
-- **🔄 Multi-Model Support** - Gemini and Claude integration
-
-**Built to showcase expertise in**: AI/ML Engineering, GenAI, LangChain, RAG, Agentic AI, and Data Analytics.
-
----
-
-## Modules
-
-| Module | Description | Certifications Showcased |
-|--------|-------------|-------------------------|
-| **RAG Assistant** | Upload documents, ask questions, get cited answers | IBM RAG/Agentic AI, Duke LLMOps |
-| **Agent Hub** | Multi-agent research and analysis workflows | Google Cloud GenAI Agents, IBM Agentic AI |
-| **Smart Analyst** | Natural language data exploration with AI | Google Data Analytics, Microsoft GenAI for Data |
-| **Prompt Lab** | Prompt engineering and optimization tools | Vanderbilt Prompt Engineering |
-| **Model Arena** | Compare LLM responses side-by-side | DeepLearning.AI, Duke LLMOps |
+### Key Capabilities
+- **🐝 Strategic Swarms**: Parallel agent orchestration (Planner → Analysts → Aggregator) using **LangGraph**.
+- **🧪 Evaluation Lab**: Automated RAG accuracy testing using **LLM-as-a-Judge** (Faithfulness/Correctness metrics).
+- **🛠️ Codebase Analyst**: Autonomous agents that can read and analyze the local repository structure.
+- **🏗️ Decoupled Architecture**: Separate **FastAPI Backend** and **Streamlit Frontend** services.
+- **🐳 Cloud-Ready**: Fully Dockerized with `docker-compose` orchestration and CI/CD workflows.
 
 ---
 
-## Tech Stack
+## 🏗️ Architecture
 
-| Category | Technologies |
-|----------|-------------|
-| **Framework** | Streamlit |
-| **LLMs** | Google Gemini, Anthropic Claude |
-| **AI/ML** | LangChain, LangGraph, ChromaDB |
-| **Embeddings** | sentence-transformers, OpenAI |
-| **Data** | Pandas, NumPy, Plotly |
-| **Vector DB** | ChromaDB, FAISS |
+AgentForge uses a hybrid microservices pattern:
+
+```mermaid
+graph TD
+    Client[User Browser] -->|HTTP| UI[Streamlit Frontend (:8501)]
+    UI -->|REST API| API[FastAPI Backend (:8000)]
+    API -->|Orchestration| Brain[LangGraph Engine]
+    Brain -->|Parallel| Agents[Gemini/Claude Agents]
+    Brain -->|Retrieve| VectorDB[ChromaDB]
+    API -->|Track| Logs[Observability Middleware]
+```
 
 ---
 
-## Quick Start
+## 🛠️ Quick Start (Docker - Recommended)
+
+The easiest way to run the full platform is via Docker Compose.
 
 ```bash
-# Clone the repository
+# 1. Clone the repo
 git clone https://github.com/ChunkyTortoise/agentforge.git
 cd agentforge
 
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+# 2. Configure Environment
+cp .env.example .env
+# Edit .env and add your GOOGLE_API_KEY (Required)
 
-# Install dependencies
+# 3. Launch Services
+docker compose up --build
+```
+
+Access the application:
+- **Frontend**: [http://localhost:8501](http://localhost:8501)
+- **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+## 💻 Local Development
+
+If you prefer running without Docker:
+
+```bash
+# 1. Install Dependencies
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your API keys
+# 2. Start Backend (Terminal 1)
+uvicorn api.main:app --reload --port 8000
 
-# Run the app
+# 3. Start Frontend (Terminal 2)
 streamlit run app.py
 ```
 
 ---
 
-## API Keys Required
+## 🧩 Modules
 
-| Provider | Purpose | Get Key |
-|----------|---------|---------|
-| Google Gemini | LLM (free tier) | [ai.google.dev](https://ai.google.dev/) |
-| Anthropic Claude | LLM (paid) | [console.anthropic.com](https://console.anthropic.com/) |
-
----
-
-## Project Structure
-
-```
-AgentForge/
-├── app.py                 # Main Streamlit application
-├── modules/               # Feature modules
-│   ├── rag_assistant.py   # RAG document Q&A
-│   ├── agent_hub.py       # Multi-agent orchestration
-│   ├── smart_analyst.py   # AI data analytics
-│   ├── prompt_lab.py      # Prompt engineering
-│   └── model_arena.py     # LLM comparison
-├── core/                  # Core AI components
-│   ├── llm_client.py      # Unified LLM interface
-│   ├── rag_engine.py      # RAG retrieval logic
-│   ├── embeddings.py      # Vector embeddings
-│   └── agents.py          # Agent definitions
-├── utils/                 # Utilities
-│   ├── document_loader.py # PDF/text processing
-│   └── logger.py          # Logging
-└── tests/                 # Test suite
-```
+| Module | Features | Technical Stack |
+|--------|----------|----------------|
+| **Agent Hub** | Parallel Swarms, Code Analysis | LangGraph, FastAPI, AST |
+| **Evaluation Lab** | RAG scoring, Latency tracking | Ragas-style metrics, Cosine Sim |
+| **RAG Assistant** | Document Q&A with citations | LangChain, ChromaDB |
+| **Smart Analyst** | AI-driven Data Exploration | PandasAI, Plotly |
 
 ---
 
-## Certifications Behind This Project
+## 🛡️ Quality Assurance
 
-This project demonstrates skills from **1,768+ hours** of professional certifications:
+We employ a "Shift-Left" testing strategy:
 
-**AI/ML Engineering**:
-- DeepLearning.AI Deep Learning Specialization (120h)
-- IBM RAG and Agentic AI Professional Certificate
-- IBM GenAI Engineering with PyTorch & LangChain
-- Duke University LLMOps Specialization
-- Google Cloud Generative AI Leader
-
-**Data Analytics**:
-- Google Data Analytics Professional Certificate (181h)
-- Google Advanced Data Analytics Certificate
-- IBM Business Intelligence Analyst (141h)
-- Microsoft GenAI for Data Analysis
+- **Unit Tests**: `tests/unit/` (Mocked external dependencies)
+- **Integration Tests**: `tests/test_api.py` (FastAPI endpoint validation)
+- **CI/CD**: GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push.
 
 ---
 
-## Author
+## 👨‍💻 Author
 
-**Cayman Roden** - AI/ML Engineer
-
-- GitHub: [@ChunkyTortoise](https://github.com/ChunkyTortoise)
-- LinkedIn: [linkedin.com/in/caymanroden](https://linkedin.com/in/caymanroden)
-
----
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
+**Cayman Roden** - Senior AI Engineer
+*Demonstrating the bridge between experimental AI and production engineering.*

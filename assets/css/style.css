@@ -1,0 +1,77 @@
+/* Modern Enterprise Theme for AgentForge */
+
+/* Import Inter Font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Hide Streamlit Branding */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+/* Custom Background */
+.stApp {
+    background-color: #0E1117;
+    background-image: radial-gradient(#1c2029 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Card Styling for Containers */
+div[data-testid="stExpander"], div.stAlert, div.stInfo {
+    background-color: #161B22;
+    border: 1px solid #30363D;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Headings */
+h1, h2, h3 {
+    color: #E6EDF3 !important;
+    font-weight: 700 !important;
+}
+
+h1 {
+    background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    padding-bottom: 1rem;
+}
+
+/* Sidebar Styling */
+section[data-testid="stSidebar"] {
+    background-color: #010409;
+    border-right: 1px solid #30363D;
+}
+
+/* Button Styling */
+div.stButton > button {
+    background-color: #238636;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+div.stButton > button:hover {
+    background-color: #2ea043;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(46, 160, 67, 0.4);
+}
+
+/* Input Fields */
+div.stTextInput > div > div > input {
+    background-color: #0d1117;
+    color: #c9d1d9;
+    border: 1px solid #30363D;
+    border-radius: 6px;
+}
+
+/* Code Blocks */
+code {
+    color: #ff7b72;
+    background-color: #161b22 !important;
+}

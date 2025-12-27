@@ -7,6 +7,8 @@ Demonstrates:
 - LangGraph and CrewAI concepts
 """
 import streamlit as st
+import os
+from typing import Optional
 
 from core.llm_client import LLMClient
 from utils.logger import get_logger
@@ -27,11 +29,113 @@ def render() -> None:
     
     workflow_type = st.selectbox(
         "Select Workflow",
-        ["Research & Report", "Code Analysis (Coming Soon)", "Data Pipeline (Coming Soon)"]
+        ["Research & Report", "Parallel Swarm Strategy", "Codebase Analyst"]
     )
     
     if workflow_type == "Research & Report":
         _render_research_workflow()
+    elif workflow_type == "Parallel Swarm Strategy":
+        _render_swarm_workflow()
+    elif workflow_type == "Codebase Analyst":
+        _render_code_analysis_workflow()
+
+def _render_code_analysis_workflow() -> None:
+    """Render the Code Analysis workflow."""
+    st.markdown("#### 💻 Codebase Analyst")
+    st.markdown("An agent that can read your local files and suggest refactoring or improvements.")
+    
+    # Simple File Selector (Mock)
+    import os
+    files = [f for f in os.listdir(".") if f.endswith(".py") or f.endswith(".md")]
+    selected_file = st.selectbox("Select File to Analyze", files)
+    
+    prompt = st.text_area("Analysis Goal", "Explain this code and suggest 3 improvements.")
+    
+    if st.button("🔍 Analyze Code"):
+        try:
+            with open(selected_file, "r") as f:
+                content = f.read()
+            
+            # Simple direct LLM call for now
+            # In a real swarm, this would be: [Ingest] -> [Reviewer] -> [Security] -> [Refactorer]
+            st.info(f"Analyzing {selected_file}...")
+            
+            from core.llm_client import LLMClient
+            client = LLMClient(provider="gemini") # Default to Gemini
+            
+            analysis_prompt = f"""
+            You are a Senior Software Engineer. Analyze the following file: '{selected_file}'.
+            
+            GOAL: {prompt}
+            
+            CODE CONTENT:
+            ```
+            {content}
+            ```
+            """
+            
+            response = client.generate_text(analysis_prompt)
+            st.markdown("### 🛠️ Analyst Report")
+            st.markdown(response)
+            
+        except Exception as e:
+            st.error(f"Error reading file: {e}")
+
+def _render_swarm_workflow() -> None:
+    """Render the Strategic Swarm workflow (Calling FastAPI Backend)."""
+    st.markdown("#### 🐝 Strategic Swarm (Multi-Agent Parallel)")
+    st.markdown("This workflow triggers a **Planner** who fans out to **Market**, **Tech**, and **Risk** analysts in parallel.")
+    
+    topic = st.text_input("Enter Topic for Analysis", "The future of Agentic AI in healthcare")
+    
+    if st.button("🚀 Launch Swarm"):
+        # We call the FastAPI backend here to demonstrate decoupling
+        import requests
+        
+        with st.spinner("Swarm agents are collaborating via FastAPI backend..."):
+            try:
+                # Assuming backend runs on port 8000 (standard in our docker-compose)
+                backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+                
+                payload = {
+                    "task": topic,
+                    "provider": "gemini" # Default
+                }
+                
+                response = requests.post(f"{backend_url}/swarm/run", json=payload, timeout=60)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    st.success("✅ Swarm Analysis Complete!")
+                    
+                    # Layout Results
+                    col1, col2 = st.columns([1, 1])
+                    
+                    with col1:
+                        st.markdown(data.get("final_report", "No report generated."))
+                    
+                    with col2:
+                        with st.expander("🔍 View Raw Analyst Outputs"):
+                            st.write("**Market Analysis**")
+                            st.info(data.get("market_analysis", "N/A"))
+                            st.write("**Technical Analysis**")
+                            st.info(data.get("technical_feasibility", "N/A"))
+                            st.write("**Risk Assessment**")
+                            st.info(data.get("risk_assessment", "N/A"))
+                else:
+                    st.error(f"Backend Error: {response.text}")
+                    st.warning("Ensure the FastAPI server is running (`uvicorn api.main:app --reload`) or use the local fallback.")
+                    
+            except Exception as e:
+                st.error(f"Connection failed: {e}")
+                st.info("Falling back to local execution for demonstration...")
+                
+                # Fallback to local if backend is not reachable
+                from core.agents import create_swarm_graph
+                graph = create_swarm_graph()
+                result = graph.invoke({"topic": topic})
+                st.markdown(result.get("final_report", "Error"))
 
 def _render_research_workflow() -> None:
     """Render the Research & Report workflow interface."""
